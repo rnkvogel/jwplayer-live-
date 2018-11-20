@@ -1,0 +1,207 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Live Auto Load JW 8</title>
+    <meta charset="utf-8" />  
+      <!-- Latest compiled and minified CSS -->
+    <script type="text/javascript" src="https://content.jwplatform.com/libraries/YOURCODE.js"></script> 
+    <script src="js/jquery.min.js" type="text/javascript"></script>
+	
+<script type="text/javascript">
+        function getQueryVariable(variable) {
+	var query = window.location.search.substring(1);
+	var vars = query.split("&");
+	for (var i=0;i<vars.length;i++) {
+	        var pair = vars[i].split("=");
+	        if(pair[0] == variable) {return pair[1];}
+	}
+	return(false);
+        }
+</script>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        var container='videoframe'; //$('#videoframe').hide();
+        var width="100%";
+        var aspect="16:9"; 
+        var lastPOS = -1; var jwProv = ""; var tempFLAG = false; var lastCheck = -2;
+        var myTimB, myTimC, myTim; var jwWAIT = 28000;
+        var buffFLAG = false; statFLAG = false; metaFLAG = false; errFLAG = false;
+        var multiplier=aspect.split(":");
+        var fixedwidth = Math.floor(window.innerWidth*width.split("%")[0]/100);
+        var fixedheight = Math.floor(window.innerWidth*multiplier[1]/multiplier[0]*width.split("%")[0]/100);
+        //console.log ('Size: '+width+', '+aspect+' ('+fixedwidth+' x '+fixedheight+')');
+        var maxBuffer = 1;
+        var jheight = $( document ).height();
+        var path = getQueryVariable("rtmp"); if(!path) path = "hwbxy2.cloud.influxis.com";
+        var app = getQueryVariable("app"); if (!app) app = "hwbxy2_live";
+        var vid =  getQueryVariable("id"); if (!vid) vid = "videochatsura";
+        var vid_esc = decodeURI(vid);
+        var img =  getQueryVariable("img"); if (!img) img = "images/nolive.jpg";
+        var start = getQueryVariable("a");
+        var http = "https://" + path + "/" + app + "/" + vid_esc + "/playlist.m3u8" ;
+        var httpNK = "https//" + path + "/" + app + "/" + vid_esc + "/";
+       //alert(http);
+        var rtsp = "rtsp://" + path + "/" + app + "/"  + vid_esc;
+        var rtmpurl="rtmp://" + path +"/" + app + "/"  + vid_esc ;
+        var xmlHTTP;
+        xmlHTTP = new XMLHttpRequest(); 
+
+        var agent=navigator.userAgent.toLowerCase();
+        var is_safari = (agent.indexOf('safari')!=-1);
+        var is_iemobile = (agent.indexOf('iemobile')!=-1);
+        var is_blackberry = (agent.indexOf('blackberry')!=-1);
+        var is_android1= (agent.indexOf('android\ 1')!=-1);
+        var is_android2= (agent.indexOf('android\ 2')!=-1);
+        var is_android3= (agent.indexOf('android\ 3')!=-1);
+        var is_chrome = (agent.indexOf('chrome')!=-1);
+
+        if (is_android1) { rtspPlayer(); }
+        else if (is_android2) { rtspPlayer();   }
+        else if (is_android3) { rtspPlayer();   }
+        else if (is_blackberry) { rtspPlayer(); }
+        else {
+	jwPlayer(); //console.log ('After Start');
+        }
+
+        function rtspPlayer() {
+        	var player=document.getElementById(container);
+        	window.location = rtsp;
+        }
+
+
+        
+        function jwPlayer() {
+            playerInst = jwplayer(container);
+
+
+
+            playerInst.setup({
+                playlist: [{
+                    image: img,
+                    sources: [
+					//{  file: rtmp, },
+                    {  file: http, "type": "hls"}
+                    ]
+                }],
+
+
+	//adjust to fit you stream size  // bufferlength: '0',
+	"type": "hls",
+	"preload": "none",
+	"aspectratio": "16:9",
+	"stretching":"uniform",
+                  "image": img,
+	"width": "100vw",
+	"height": "100vh",
+	"skin": "/jwplayer/skins/beelden.css",
+	"controls": true,
+	"title": vid,
+	"autostart": false,
+	"repeat": false,
+	"primary": "html5",
+	"hlshtml": true,
+	"androidhls": true,
+
+           });
+
+            playerInst.on("error", function(evt) {
+	        $('#videoframe').hide(); //buffFLAG = true; //clearInterval(myTimB);
+	        console.log ('Error Message:  ' + evt['message']); 
+
+
+
+            });
+
+  playerInst.on('ready', function() {
+	lastPOS = -1; //playerInst.play();   //playerInst.on('complete')
+	jwProv = jwplayer().getProvider()["name"]; console.log ('Ready    Provider: ' + jwProv); // flash?
+	if (jwProv == "flash") jwWAIT = 33000;
+	playerInst.play();
+            });
+
+
+
+            jwplayer().on("buffer", function(e) {
+	//console.log(e); 
+	var rChk = e['reason']; console.log("Buffer: " + rChk); //$('#videoframe').hide();
+	//if (rChk == "stalled" && jwProv == "flash") {
+	if (rChk == "stalled" && jwProv == "flash") {
+		$('#videoframe').hide(); //playerInst.pause();
+	}
+
+            });
+
+        playerInst.on('play', function(e) {
+	      clearInterval(myTimB); //clearInterval(myTimC);
+	      //lastPOS = -1;
+	      buffFLAG = false; lastCheck = -2;//$('#videoframe').show();
+
+
+	      $('#videoframe').show();
+	      console.log ('onPlay: ' + playerInst.getState());	
+            });
+        	setInterval(monitor_players, 3000);
+        	//setInterval(gtHTTPStatus, 3000);
+        }
+
+
+        function monitor_players() {
+  
+  var pCheck = playerInst.getState();
+	var posMon = playerInst.getPosition(); 
+	var posDur = playerInst.getDuration();
+
+            	console.log (pCheck + "                " + posMon + "                " + posDur);
+
+	if (posMon <= lastPOS) {
+  $('#videoframe').hide(); //playerInst.pause();
+      	        if (jwProv == "flash" && !(posMon == 0)) {
+jwplayer(container).load([{
+                                                        "file": "",
+                                                        "image": img,
+                                                        "title": vid
+      		}]);
+
+		lastCheck = posMon; //return false;
+
+      	         }
+
+
+	        if (!buffFLAG) {
+
+		buffFLAG = true; //playerInst.remove();
+
+	        	myTimB = setInterval(function() {
+
+			clearInterval(myTimB); //playerInst.remove();
+
+			jwplayer(container).load([{
+                                                          "file": http,
+                                                          "image": img,
+                                                          "title": vid
+			}]);
+
+				lastPOS = -1;
+				buffFLAG = false; playerInst.play(); 
+		 
+				tempFLAG = false;
+	        		//}, 14000);
+	        	}, jwWAIT);
+	        }
+	}
+	lastPOS = posMon;
+            }
+  }); // End of Ready Function
+
+</script>
+
+</head>
+<body style="margin: 0px;">
+
+	<div id="master" style = "width: 100vw; height: 100vh; margin: 5px; background: #500004 url(images/nolive.jpg)no-repeat center center fixed; background-size: cover; ">
+	        <div id="videoframe"></div>
+	</div>
+
+</body>
+</html>
